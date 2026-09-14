@@ -1,0 +1,7 @@
+1. What function should be calling set_value;
+2. Uderstantand the names and how they work.
+3. Understand the grammer of the calculator.
+4. Understand the flow of the program.
+5. Understand how get works.
+6. Understand what statement(), declaration(), is_declared() and ignore() do.
+7. Add comments.
