@@ -5,3 +5,4 @@
 5. Understand how get works.
 6. Understand what statement(), declaration(), is_declared() and ignore() do.
 7. Add comments.
+8. Enable the user to find square root.
