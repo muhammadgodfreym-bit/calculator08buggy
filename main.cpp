@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
-[[noreturn]] inline void error(const std::string &s) { throw std::runtime_error(s); }
+[[noreturn]] inline void error(const std::string& s) { throw std::runtime_error(s); }
 
-[[noreturn]] inline void error(const std::string &s, const std::string &s2) { error(s + s2); }
+[[noreturn]] inline void error(const std::string& s, const std::string& s2) { error(s + s2); }
 
 struct Token {
     char kind;
@@ -88,10 +88,8 @@ Token Token_stream::get()
             while (std::cin.get(ch) && (isalpha(ch) || isdigit(ch)))
                 s += ch;
             std::cin.unget();
-            if (s == "let")
-                return Token(let);
-            if (s == "quit")
-                return Token(name);
+            if (s == "let") return Token(let);
+            if (s == "quit") return Token(name);
             return Token(name, s);
         }
         error("Bad token");
@@ -108,8 +106,7 @@ void Token_stream::ignore(char c)
 
     char ch;
     while (std::cin >> ch)
-        if (ch == c)
-            return;
+        if (ch == c) return;
 }
 
 struct Variable {
@@ -123,8 +120,7 @@ std::vector<Variable> names;
 double get_value(std::string s)
 {
     for (int i = 0; i < names.size(); ++i)
-        if (names[i].name == s)
-            return names[i].value;
+        if (names[i].name == s) return names[i].value;
     error("get: undefined name ", s);
 }
 
@@ -141,60 +137,56 @@ void set_value(std::string s, double d)
 bool is_declared(std::string s)
 {
     for (int i = 0; i < names.size(); ++i)
-        if (names[i].name == s)
-            return true;
+        if (names[i].name == s) return true;
     return false;
 }
 
 double define_name(std::string var, double val)
 // add {var,val} to var_table
 {
-    if (is_declared(var))
-        error(var, " declared twice");
+    if (is_declared(var)) error(var, " declared twice");
     names.push_back(Variable{var, val});
     return val;
 }
 
 Token_stream ts;
 
-double expression();
+double expression(Token_stream ts);
 
-double primary()
+double primary(Token_stream ts)
 {
     Token t = ts.get();
     switch (t.kind) {
     case '(': {
-        double d = expression();
+        double d = expression(Token_stream ts);
         t = ts.get();
-        if (t.kind != ')')
-            error("')' expected");
+        if (t.kind != ')') error("')' expected");
         return d;
     }
-    case '-': return -primary();
+    case '-': return -primary(ts);
     case number: return t.value;
     case name: return get_value(t.name);
     default: error("primary expected");
     }
 }
 
-double term()
+double term(Token_stream& ts)
 {
-    double left = primary();
+    double left = primary(ts);
+    Token t = ts.get();
     while (true) {
         Token t = ts.get();
         switch (t.kind) {
-        case '*': left *= primary(); break;
+        case '*': left *= primary(ts); break;
         case '/': {
-            double d = primary();
-            if (d == 0)
-                error("divide by zero");
+            double d = primary(ts);
+            if (d == 0) error("divide by zero");
             left /= d;
             break;
         }
         case '%': {
-            double d = primary();
-            if (d == 0)
-                error("divide by zero");
+            double d = primary(ts);
+            if (d == 0) error("divide by zero");
             left = std::fmod(left, d);
             break;
         }
@@ -203,14 +195,15 @@ double term()
     }
 }
 
-double expression()
+double expression(Token_stream& ts)
 {
-    double left = term();
+    double left = term(ts);
+    Token t = ts.get();
     while (true) {
         Token t = ts.get();
         switch (t.kind) {
-        case '+': left += term(); break;
-        case '-': left -= term(); break;
+        case '+': left += term(ts); break;
+        case '-': left -= term(ts); break;
         default: ts.unget(t); return left;
         }
     }
@@ -219,15 +212,12 @@ double expression()
 double declaration()
 {
     Token t = ts.get();
-    if (t.kind != 'a')
-        error("name expected in declaration");
+    if (t.kind != 'a') error("name expected in declaration");
     std::string name = t.name;
-    if (is_declared(name))
-        error(name, " declared twice");
+    if (is_declared(name)) error(name, " declared twice");
     Token t2 = ts.get();
-    if (t2.kind != '=')
-        error("'=' missing in declaration of ", name);
-    double d = expression();
+    if (t2.kind != '=') error("'=' missing in declaration of ", name);
+    double d = expression(Token_stream ts);
     names.push_back(Variable(name, d));
     return d;
 }
@@ -237,7 +227,7 @@ double statement()
     Token t = ts.get();
     switch (t.kind) {
     case let: return declaration();
-    default: ts.unget(t); return expression();
+    default: ts.unget(t); return expression(Token_stream ts);
     }
 }
 
@@ -253,13 +243,12 @@ void calculate()
             std::cout << prompt;
             Token t = ts.get();
             while (t.kind == print)
-                t = ts.get();
-            if (t.kind == quit)
-                return;
+                t = ts.get(); // First discard all prints
+            if (t.kind == quit) return;
             ts.unget(t);
             std::cout << result << statement() << std::endl;
         }
-        catch (const std::runtime_error &e) {
+        catch (const std::runtime_error& e) {
             std::cerr << e.what() << std::endl;
             clean_up_mess();
         }
@@ -268,6 +257,7 @@ void calculate()
 int main()
 {
     try {
+        // Add {name, value} to the names vector
         define_name("pi", 3.1415926535);
         define_name("e", 2.7182818284);
         define_name("K", 1000);
@@ -275,7 +265,7 @@ int main()
         calculate();
         return 0;
     }
-    catch (const std::exception &e) {
+    catch (const std::exception& e) {
         std::cerr << "exception: " << e.what() << std::endl;
         char c;
         while (std::cin >> c && c != ';')
